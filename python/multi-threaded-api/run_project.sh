@@ -3,8 +3,9 @@ set +e
 
 PYTHON_BIN="python3.13"
 VENV_PATH=".venv"
-DATA_DIR="./test"
+DATA_DIR="$(realpath ./test)"
 VENV_READY=false
+TLS_DIR="${DATA_DIR}/tls"
 
 [[ ! -d "${DATA_DIR}" ]] && mkdir -p "${DATA_DIR}"
 
@@ -28,6 +29,11 @@ if ! ${VENV_READY}; then
   [[ ! -d "${VENV_PATH}" ]] && rm -rf "${VENV_PATH}"
   exit 1
 else
+  if [[ -d "${TLS_DIR}" ]]; then
+    [[ -e "${TLS_DIR}/ca_cert.pem" ]] && export TLS_CA_FILE="${TLS_DIR}/ca_cert.pem"
+    [[ -e "${TLS_DIR}/cert.pem" ]] && export TLS_CERT_FILE="${TLS_DIR}/cert.pem"
+    [[ -e "${TLS_DIR}/key.pem" ]] && export TLS_KEY_FILE="${TLS_DIR}/key.pem"
+  fi
   echo "Activating virtual environment..."
   source "${VENV_PATH}/bin/activate"
   python3 src \
@@ -36,5 +42,5 @@ else
   ${@}
 fi
 
-
+unset TLS_CA_FILE TLS_CERT_FILE TLS_KEY_FILE
 [[ -n "${VIRTUAL_ENV}" ]] && deactivate

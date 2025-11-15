@@ -3,7 +3,7 @@ import sys
 import signal
 import time
 from app import App
-from httpapi import FastAPIThreadedServer
+from httpapi import FastAPI, FastAPIThreadedServer
 
 # Create a base app object
 app = App()
@@ -22,23 +22,31 @@ signal.signal(signal.SIGINT, signal_handler)
 
 if __name__ == "__main__":
     # Spin up the server in the background
-    
+    app.logger.info(f"Starting {app.name} v{app.version} [{app.license}]")
+    proto = "http"
+    if app.tls_opts.enabled:
+        app.logger.info("TLS is enabled for the server")
+        proto = "https"
     reload = True if app.args.log_level in ["debug"] else False
     app.logger.info(f"Log Level: {app.args.log_level}")
     if reload:
         app.logger.debug(f"Reloading on changes.")
     app.logger.debug(f"Base Directory: {app.base_dir}")
+
     api = FastAPIThreadedServer(
-        title = app.name,
+        title = f"{app.name}",
         version = f"{app.version}",
+        description = f"{app.description}",
         copywrite = f"{app.copyright}",
         host="0.0.0.0", port=app.args.http_port,
         log_opts=app.log_opts,
-        log_level=app.args.log_level, reload=reload
+        tls_opts=app.tls_opts,
+        reload=reload
         )
     api.start()
-    app.logger.info(f"Starting {app.name} v{app.version} [{app.license}]")
-    app.logger.info(f"API Server running – hit http://127.0.0.1:{app.args.http_port}/healthz")
+
+    
+    app.logger.info(f"API Server running – hit {proto}://127.0.0.1:{app.args.http_port}/healthz")
     app.logger.info("Press Ctrl-C to stop the server")
     
     # Do something else while the server lives

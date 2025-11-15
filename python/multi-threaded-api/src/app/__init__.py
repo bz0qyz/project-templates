@@ -28,15 +28,7 @@ class App:
         self.base_dir = BASE_DIR
         self.args = Arguments(self).args
         self.log_opts = LogOptions(self.args)
-
-        # # Setup logger options
-        # self.log_level = self.args.log_level if self.args.log_level in self.LOG_LEVELS else "info"
-        # log_format_key = self.args.log_format if self.args.log_format in self.LOG_FORMATS.keys() else "default"
-        # # if the log level is debug, force the log format to debug
-        # if self.log_level == "debug":
-        #     log_format_key = "debug"
-        # self.log_format = self.LOG_FORMATS[log_format_key]
-        # self.log_date_format = "%Y-%m-%d %H:%M:%S"
+        self.tls_opts = TlsOptions(self.args)
         
         # Setup logger
         self.logger = self._setup_logger()
@@ -69,3 +61,12 @@ class LogOptions:
         if self.level == "debug":
             log_format_key = "debug"
         self.format = LOG_FORMATS[self.format_key]
+
+class TlsOptions:
+    """ TLS options dataclass """
+    def __init__(self, args: Arguments):
+        self.auto = args.tls_auto if hasattr(args, 'tls_auto') else False
+        self.cert = args.tls_cert if hasattr(args, 'tls_cert') else None
+        self.key = args.tls_key if hasattr(args, 'tls_key') else None
+        self.ca = args.tls_ca if hasattr(args, 'tls_ca') else None
+        self.enabled = self.auto or (self.cert is not None and self.key is not None)

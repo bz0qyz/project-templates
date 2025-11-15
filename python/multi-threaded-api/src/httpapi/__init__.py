@@ -18,29 +18,30 @@ class FastAPIThreadedServer:
     def __init__(
         self,
         log_opts: Optional[object] = None,
+        tls_opts: Optional[object] = None,
         title: str = "API Service",
         version: str = "1.0.0",
+        description: str = "API Service Description",
         copywrite: str = "None",
         host: str = "127.0.0.1",
         port: int = 3000,
         *,
         reload: bool = False,
-        log_level: str = "info",
         workers: int = 1,
         ssl_keyfile: Optional[str] = None,
         ssl_certfile: Optional[str] = None,
     ):
         self.title = title
         self.version = version
+        self.description = description
         self.copywrite = copywrite
         self.host = host
         self.port = port
         self.reload = reload
+        self.tls_opts = tls_opts
         self.log_opts = log_opts
         self.log_config = LOGGING_CONFIG.copy()
         self.workers = workers
-        self.ssl_keyfile = ssl_keyfile
-        self.ssl_certfile = ssl_certfile
 
         # Configure logging according to log_opts
         for key, config in self.log_config["formatters"].items():
@@ -55,7 +56,13 @@ class FastAPIThreadedServer:
         # ------------------------------------------------------------------
         # Build the FastAPI instance – you can customise it before starting.
         # ------------------------------------------------------------------
-        self.app = FastAPI(title=f"{title}")
+        # self.app = FastAPI(title=f"{title}")
+        self.app =FastAPI(
+            title = self.title,
+            version = self.version,
+            description = self.description,
+            reload=self.reload
+        )
         self._register_builtin_routes()
         # import external routers:
         self.app.include_router(router)
@@ -84,8 +91,9 @@ class FastAPIThreadedServer:
             proxy_headers=True,
             reload=self.reload,
             workers=self.workers,
-            ssl_keyfile=self.ssl_keyfile,
-            ssl_certfile=self.ssl_certfile,
+            ssl_keyfile=self.tls_opts.key,
+            ssl_certfile=self.tls_opts.cert,
+            ssl_ca_certs=self.tls_opts.ca,
         )
         self.server = uvicorn.Server(config)
 
