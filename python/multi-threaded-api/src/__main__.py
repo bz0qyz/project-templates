@@ -21,8 +21,13 @@ signal.signal(signal.SIGINT, signal_handler)
 
 
 if __name__ == "__main__":
+    num_queues = 3
+    num_workers = (app.cpu_cores - num_queues) if (app.cpu_cores - num_queues) > 0 else 1
+
     # Spin up the server in the background
     app.logger.info(f"Starting {app.name} v{app.version} [{app.license}]")
+     
+    
     proto = "http"
     if app.tls_opts.enabled:
         app.logger.info("TLS is enabled for the server")
@@ -31,7 +36,11 @@ if __name__ == "__main__":
     app.logger.info(f"Log Level: {app.args.log_level}")
     if reload:
         app.logger.debug(f"Reloading on changes.")
+        num_workers = 1  # force single worker for reload mode
+    
     app.logger.debug(f"Base Directory: {app.base_dir}")
+    app.logger.info(f"{app.cpu_cores} CPU core(s). {num_workers} http worker(s)")
+    app.logger.info(f"Access Log Enabled: {app.log_opts.access_log}")
 
     api = FastAPIThreadedServer(
         title = f"{app.name}",
@@ -41,7 +50,8 @@ if __name__ == "__main__":
         host="0.0.0.0", port=app.args.http_port,
         log_opts=app.log_opts,
         tls_opts=app.tls_opts,
-        reload=reload
+        reload=reload,
+        workers=num_workers,
         )
     api.start()
 

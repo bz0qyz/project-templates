@@ -28,8 +28,6 @@ class FastAPIThreadedServer:
         *,
         reload: bool = False,
         workers: int = 1,
-        ssl_keyfile: Optional[str] = None,
-        ssl_certfile: Optional[str] = None,
     ):
         self.title = title
         self.version = version
@@ -157,29 +155,3 @@ class FastAPIThreadedServer:
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Automatic shutdown when leaving the context."""
         self.stop()
-
-
-# ----------------------------------------------------------------------
-# Example usage (run directly with `python -m myservice.service`)
-# ----------------------------------------------------------------------
-if __name__ == "__main__":
-    # Simple demo – start the server, wait for Ctrl‑C, then shut down cleanly.
-    server = FastAPIThreadedServer(host="0.0.0.0", port=self.port, reload=self.reload)
-
-    def _handle_sigint(signum, frame):
-        print("\nReceived interrupt – stopping server…")
-        server.stop()
-        sys.exit(0)
-
-    signal.signal(signal.SIGINT, _handle_sigint)
-
-    print(f"🚀 Starting FastAPI on http://{server.host}:{server.port}")
-    server.start()
-
-    # Keep the main thread alive while the server runs in the background.
-    # In a real app you could do other work here.
-    try:
-        while True:
-            signal.pause()  # wait for signals (Ctrl‑C)
-    except KeyboardInterrupt:
-        pass

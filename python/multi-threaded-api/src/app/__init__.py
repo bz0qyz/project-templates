@@ -29,6 +29,7 @@ class App:
         self.args = Arguments(self).args
         self.log_opts = LogOptions(self.args)
         self.tls_opts = TlsOptions(self.args)
+        self.cpu_cores = os.cpu_count() if os.cpu_count() is not None else 1
         
         # Setup logger
         self.logger = self._setup_logger()
