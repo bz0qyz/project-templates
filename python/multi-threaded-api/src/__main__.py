@@ -24,17 +24,22 @@ if __name__ == "__main__":
     # Spin up the server in the background
     
     reload = True if app.args.log_level in ["debug"] else False
-    print(f"Log Level: {app.args.log_level}")
-    print(f"Reload on changes: {reload}")
+    app.logger.info(f"Log Level: {app.args.log_level}")
+    if reload:
+        app.logger.debug(f"Reloading on changes.")
+    app.logger.debug(f"Base Directory: {app.base_dir}")
     api = FastAPIThreadedServer(
         title = app.name,
         version = f"{app.version}",
-        copywrite = f"{app.config.copyright}",
+        copywrite = f"{app.copyright}",
         host="0.0.0.0", port=app.args.http_port,
+        log_opts=app.log_opts,
         log_level=app.args.log_level, reload=reload
         )
     api.start()
-    print(f"API Server running – hit http://127.0.0.1:{app.args.http_port}/healthz")
+    app.logger.info(f"Starting {app.name} v{app.version} [{app.license}]")
+    app.logger.info(f"API Server running – hit http://127.0.0.1:{app.args.http_port}/healthz")
+    app.logger.info("Press Ctrl-C to stop the server")
     
     # Do something else while the server lives
     for i in range(35):
@@ -43,4 +48,4 @@ if __name__ == "__main__":
 
     # Shut everything down
     api.stop()
-    print("Server stopped")
+    app.logger.info("Server stopped")

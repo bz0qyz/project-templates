@@ -7,6 +7,9 @@ import uvicorn
 from fastapi import FastAPI
 from .routes import router
 
+from .config import LOGGING_CONFIG
+from app.constants import LOG_LEVELS, LOG_FORMATS
+
 class FastAPIThreadedServer:
     """
     Encapsulates a FastAPI app and runs uvicorn in a background thread.
@@ -14,6 +17,7 @@ class FastAPIThreadedServer:
 
     def __init__(
         self,
+        log_opts: Optional[object] = None,
         title: str = "API Service",
         version: str = "1.0.0",
         copywrite: str = "None",
@@ -32,10 +36,21 @@ class FastAPIThreadedServer:
         self.host = host
         self.port = port
         self.reload = reload
-        self.log_level = log_level
+        self.log_opts = log_opts
+        self.log_config = LOGGING_CONFIG.copy()
         self.workers = workers
         self.ssl_keyfile = ssl_keyfile
         self.ssl_certfile = ssl_certfile
+
+        # Configure logging according to log_opts
+        for key, config in self.log_config["formatters"].items():
+            config["datefmt"] = self.log_opts.date_format
+            if key == "json":
+                continue  # json formatter is custom class
+            config["format"] = LOG_FORMATS[key] if key in LOG_FORMATS else self.log_opts.format
+        self.log_config["handlers"]["default"]["formatter"] = self.log_opts.format_key
+        self.log_config["loggers"]["uvicorn"]["level"] = self.log_opts.level.upper()
+        
 
         # ------------------------------------------------------------------
         # Build the FastAPI instance – you can customise it before starting.
@@ -63,7 +78,10 @@ class FastAPIThreadedServer:
             app=self.app,
             host=self.host,
             port=self.port,
-            log_level=self.log_level,
+            log_level=self.log_opts.level,
+            access_log=self.log_opts.access_log,
+            log_config=LOGGING_CONFIG,
+            proxy_headers=True,
             reload=self.reload,
             workers=self.workers,
             ssl_keyfile=self.ssl_keyfile,
