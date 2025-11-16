@@ -18,28 +18,14 @@ class FastAPIThreadedServer:
     def __init__(
         self,
         log_opts: Optional[object] = None,
-        tls_opts: Optional[object] = None,
-        title: str = "API Service",
-        version: str = "1.0.0",
-        description: str = "API Service Description",
-        copywrite: str = "None",
-        host: str = "127.0.0.1",
-        port: int = 3000,
-        *,
-        reload: bool = False,
-        workers: int = 1,
+        uvc_opts: Optional[object] = None,
+        api_opts: Optional[object] = None,
+        meta: Optional[object] = None
     ):
-        self.title = title
-        self.version = version
-        self.description = description
-        self.copywrite = copywrite
-        self.host = host
-        self.port = port
-        self.reload = reload
-        self.tls_opts = tls_opts
+        self.uvc_opts = uvc_opts
+        self.api_opts = api_opts
         self.log_opts = log_opts
         self.log_config = LOGGING_CONFIG.copy()
-        self.workers = workers
 
         # Configure logging according to log_opts
         for key, config in self.log_config["formatters"].items():
@@ -56,10 +42,8 @@ class FastAPIThreadedServer:
         # ------------------------------------------------------------------
         # self.app = FastAPI(title=f"{title}")
         self.app =FastAPI(
-            title = self.title,
-            version = self.version,
-            description = self.description,
-            reload=self.reload
+            **self.api_opts.__dict__
+
         )
         self._register_builtin_routes()
         # import external routers:
@@ -81,17 +65,7 @@ class FastAPIThreadedServer:
         # watches the `_should_stop` event.
         config = uvicorn.Config(
             app=self.app,
-            host=self.host,
-            port=self.port,
-            log_level=self.log_opts.level,
-            access_log=self.log_opts.access_log,
-            log_config=LOGGING_CONFIG,
-            proxy_headers=True,
-            reload=self.reload,
-            workers=self.workers,
-            ssl_keyfile=self.tls_opts.key,
-            ssl_certfile=self.tls_opts.cert,
-            ssl_ca_certs=self.tls_opts.ca,
+            **self.uvc_opts.__dict__
         )
         self.server = uvicorn.Server(config)
 
