@@ -25,6 +25,7 @@ class FastAPIThreadedServer:
         self.uvc_opts = uvc_opts
         self.api_opts = api_opts
         self.log_opts = log_opts
+        self.meta = meta
         self.log_config = LOGGING_CONFIG.copy()
 
         # Configure logging according to log_opts
@@ -116,7 +117,7 @@ class FastAPIThreadedServer:
 
         @self.app.get("/version")
         async def version():
-            return {"name": f"{self.title}", "version": f"{self.version}", "copyright": f"{self.copywrite}"}
+            return {"name": f"{self.meta.name}", "version": f"{self.meta.version}", "copyright": f"{self.meta.copyright}"}
 
     # ----------------------------------------------------------------------
     # Convenience dunder methods

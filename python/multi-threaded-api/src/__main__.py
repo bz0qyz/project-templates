@@ -31,6 +31,7 @@ if __name__ == "__main__":
         log_opts = app.log_opts,
         api_opts = app.api_opts,
         uvc_opts = app.uvc_opts,
+        meta = app.meta
         )
     api.start()
 
