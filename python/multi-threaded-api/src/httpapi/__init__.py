@@ -1,16 +1,17 @@
 import threading
 import signal
 import sys
+import logging
 from typing import Optional, List, Tuple
 
 import uvicorn
 from fastapi import FastAPI
-from .routes import router
+from .routes import router, handler
 
 from .config import LOGGING_CONFIG
 from app.constants import LOG_LEVELS, LOG_FORMATS
 
-class FastAPIThreadedServer:
+class FastAPIThreadedServer():
     """
     Encapsulates a FastAPI app and runs uvicorn in a background thread.
     """
@@ -20,13 +21,20 @@ class FastAPIThreadedServer:
         log_opts: Optional[object] = None,
         uvc_opts: Optional[object] = None,
         api_opts: Optional[object] = None,
-        meta: Optional[object] = None
+        meta: Optional[object] = None,
+        queue_workers: Optional[dict] = None,
     ):
         self.uvc_opts = uvc_opts
         self.api_opts = api_opts
         self.log_opts = log_opts
         self.meta = meta
+        self.queue_workers = queue_workers if queue_workers is not None else {}
+        handler.add(self.queue_workers)
+        self._logger = logging.getLogger(log_opts.name if log_opts and hasattr(log_opts, 'name') else __name__)
         self.log_config = LOGGING_CONFIG.copy()
+
+        self._logger.debug(f"Initializing FastAPIThreadedServer with {len(self.queue_workers)} queue worker(s).")
+        self.queue_workers["main"].queue.put("Server initialized")
 
         # Configure logging according to log_opts
         for key, config in self.log_config["formatters"].items():
@@ -41,8 +49,7 @@ class FastAPIThreadedServer:
         # ------------------------------------------------------------------
         # Build the FastAPI instance – you can customise it before starting.
         # ------------------------------------------------------------------
-        # self.app = FastAPI(title=f"{title}")
-        self.app =FastAPI(
+        self.app = FastAPI(
             **self.api_opts.__dict__
 
         )

@@ -42,7 +42,7 @@ class App:
         init_log.append((DEBUG, f"HTTP: TLS/SSL Enabled: {self.tls_opts.enabled}"))
 
         # initialize logging options
-        self.log_opts = LogOptions(self.args)
+        self.log_opts = LogOptions(self.args, logger_name=self.name)
         init_log.append((INFO, f"HTTP: Access Log Enabled: {self.log_opts.access_log}"))
         init_log.append((DEBUG, f"HTTP: Reload on changes: {self.log_opts.debug}"))
 
@@ -98,7 +98,8 @@ class AppMetadata:
       
 class LogOptions:
     """ Logging options dataclass """
-    def __init__(self, args: Arguments) -> None:
+    def __init__(self, args: Arguments, logger_name: str) -> None:
+        self.name = logger_name
         self.debug = False
         self.date_format = "%Y-%m-%d %H:%M:%S"
         self.level = args.log_level if args.log_level in LOG_LEVELS else "info"
@@ -152,6 +153,6 @@ class FastAPIOptions:
     """ FastAPI options dataclass """
     def __init__(self, meta: AppMetadata, log_opts: LogOptions) -> None:
         self.title = meta.name
-        self.description = meta.description
+        self.summary = meta.description
         self.version = str(meta.version)
         self.reload = log_opts.debug
