@@ -21,6 +21,11 @@ signal.signal(signal.SIGINT, signal_handler)
 
 
 if __name__ == "__main__":
+    # Perform build test and exit
+    if app.args.build_test:
+        app.logger.info("Build test complete")
+        sys.exit(0)
+    
     # Start the FastAPI server in a background thread
     api = FastAPIThreadedServer(
         log_opts = app.log_opts,

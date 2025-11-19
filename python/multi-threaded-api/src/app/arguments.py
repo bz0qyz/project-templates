@@ -37,6 +37,7 @@ class Arguments(argparse.ArgumentParser):
             help=f'Disable the HTTP Access log (default: %(default)s). env: NO_ACCESS_LOG',
             action=EnvDefault, envvar="TLS_AUTOGEN"
         )
+        self.add_argument('--build-test', action='store_true', help=argparse.SUPPRESS)
         # Server options
         self.add_argument('-l', '--listen',
             metavar="0.0.0.0", type=self.ip_addr, default="0.0.0.0", dest="http_host",

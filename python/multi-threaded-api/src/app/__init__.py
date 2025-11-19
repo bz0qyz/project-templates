@@ -16,10 +16,11 @@ init_log: list[tuple[int, str]] = []
 class App:
     """ Base application configuration """
     # Must match pyproject.toml
-    PROJECT_NAME = "multi-threaded-api"
+    PROJECT_NAME = "template-api"
     
     def __init__(self, num_queues: int = 1) -> None:
         # Set applcation defalts
+        print(metadata.distribution(self.PROJECT_NAME)._path)
 
         # Calculate number of fastAPI workers
         num_queues = num_queues
