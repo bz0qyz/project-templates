@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=64", "wheel", "setuptools-scm", "poetry-core"]
+build-backend = "setuptools.build_meta"
+# build-backend = "poetry.core.masonry.api"
+
+
+[project]
+name = "template-api"
+version = "0.0.2"
+description = "Multi-Threaded API Template"
+authors = [{name = "bz0qyz", email="bz0qyz@github.com"}]
+maintainers = []
+
+requires-python = ">=3.12"
+readme = {file = "README.md", content-type = "text/markdown"}
+
+license = "Unlicense"
+license-files = ["LICENSE"]
+keywords = ["api", "fastapi", "container", "template", "multi-threaded"]
+
+dependencies = [
+    "pydantic>=2.12.4",
+    "Packaging>=25.0",
+    "fastapi>=0.121.2",
+    "uvicorn[standard]>=0.38.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pyinstaller>=6.10"
+]
+
+[project.urls]
+home = "https://github.com/bz0qyz"
+project = "https://github.com/bz0qyz/project-templates"
+
+
+[tool.pyinstaller.build]
+onefile = true
+console = true
+entrypoint = "src/__main__.py"
+# Log level: CRITICAL, ERROR, WARNING, INFO, DEBUG, TRACE
+log-level = "INFO"
+datas = [
+    ["README.md", "."],
+    ["LICENSE", "."],
+    ["assets/", "assets/"]
+]

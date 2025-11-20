@@ -1,0 +1,33 @@
+FROM python:3.13-alpine3.22 AS builder
+ENV BUILDKIT_PROGRESS=plain
+COPY . /tmp/app
+
+WORKDIR /tmp/app
+RUN set -e; \
+    apk add --no-cache build-base \
+    && python3 -m venv /tmp/venv \
+    && source /tmp/venv/bin/activate \
+    && pip3 install --upgrade pip pyinstaller \
+    && pip3 install . \
+    && python3 build.py \
+    && ./dist/app.bin --build-test --log-level debug
+
+
+FROM alpine:3.22 AS runtime
+ENV PYTHONUNBUFFERED=1
+ENV USER_NAME=appuser
+ENV USER_UID=10000
+ENV USER_HOME=/home/${USER_NAME}
+ENV DATA_DIR=/data
+
+RUN set -e \
+    && apk add --no-cache bash \
+    && mkdir -p "${DATA_DIR}" \
+    && adduser -D -u ${USER_UID} -h "${USER_HOME}" -s /bin/bash ${USER_NAME} \
+    && chown -R ${USER_NAME}:${USER_NAME} "${DATA_DIR}"
+
+COPY --from=builder --chown=${USER_UID}:${USER_UID} /tmp/app/dist/app.bin /usr/local/bin/app-api
+
+VOLUME /data
+EXPOSE 3000
+ENTRYPOINT ["app-api"]

@@ -1,0 +1,1 @@
+Files placed in this directory will be bundled with the application in the pyinstaller package.
