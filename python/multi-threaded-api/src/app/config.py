@@ -33,17 +33,17 @@ LOGGING_CONFIG = {
     "disable_existing_loggers": False,
     "formatters": {
         "minimal": {
-            "format": "[%(levelname)s] %(message)s",
+            "format": "%(levelname)-8s: %(message)s",
             "datefmt": "%Y-%m-%d %H:%M:%S",
             "use_colors": False,
         },
         "default": {
-            "format": "%(asctime)s [%(levelname)s] %(message)s",
+            "format": "%(asctime)s - %(levelname)-8s: %(message)s",
             "datefmt": "%Y-%m-%d %H:%M:%S",
             "use_colors": False,
         },
         "debug": {
-            "format": "[%(levelname)s] %(name)s (%(module)s:%(lineno)d ): %(message)s",
+            "format": "%(levelname)-8s: %(name)s (%(module)s:%(lineno)d): %(message)s",
             "datefmt": "%Y-%m-%d %H:%M:%S",
             "use_colors": False,
         },
@@ -56,10 +56,17 @@ LOGGING_CONFIG = {
         "default": {
             "class": "logging.StreamHandler",
             "formatter": "default",
+            "level": "INFO",
         },
     },
     "loggers": {
+        "api": {"handlers": ["default"], "level": "INFO", "propagate": False },
         "uvicorn": {"handlers": ["default"], "level": "INFO", "propagate": False },
+        "uvicorn.error": {"handlers": ["default"], "level": "INFO", "propagate": False},
         "uvicorn.access": {"handlers": ["default"], "level": "INFO", "propagate": False},
+    },
+    "root": {
+        "level": "INFO",
+        "handlers": ["default"],
     },
 }

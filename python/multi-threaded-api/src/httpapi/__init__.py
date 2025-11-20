@@ -1,15 +1,14 @@
 import threading
 import signal
 import sys
+import json
 import logging
-from typing import Optional, List, Tuple
-
 import uvicorn
-from fastapi import FastAPI
-from .routes import router, handler
+from fastapi import FastAPI, Depends, Request, HTTPException
+from .apiroutes import router
+from typing import Optional, List, Tuple
+from .helpers import verify_sha256
 
-from .config import LOGGING_CONFIG
-from app.constants import LOG_LEVELS, LOG_FORMATS
 
 class FastAPIThreadedServer():
     """
@@ -18,43 +17,30 @@ class FastAPIThreadedServer():
 
     def __init__(
         self,
-        log_opts: Optional[object] = None,
-        uvc_opts: Optional[object] = None,
-        api_opts: Optional[object] = None,
+        logger_config: Optional[object] = None,
+        uvc_config: Optional[object] = None,
+        api_config: Optional[object] = None,
         meta: Optional[object] = None,
-        queue_workers: Optional[dict] = None,
     ):
-        self.uvc_opts = uvc_opts
-        self.api_opts = api_opts
-        self.log_opts = log_opts
+        self.uvc_config = uvc_config
+        self.api_config = api_config
+        self.logger_config = logger_config
         self.meta = meta
-        self.queue_workers = queue_workers if queue_workers is not None else {}
-        handler.add(self.queue_workers)
-        self._logger = logging.getLogger(log_opts.name if log_opts and hasattr(log_opts, 'name') else __name__)
-        self.log_config = LOGGING_CONFIG.copy()
-
-        self._logger.debug(f"Initializing FastAPIThreadedServer with {len(self.queue_workers)} queue worker(s).")
-        self.queue_workers["main"].queue.put("Server initialized")
-
-        # Configure logging according to log_opts
-        for key, config in self.log_config["formatters"].items():
-            config["datefmt"] = self.log_opts.date_format
-            if key == "json":
-                continue  # json formatter is custom class
-            config["format"] = LOG_FORMATS[key] if key in LOG_FORMATS else self.log_opts.format
-        self.log_config["handlers"]["default"]["formatter"] = self.log_opts.format_key
-        self.log_config["loggers"]["uvicorn"]["level"] = self.log_opts.level.upper()
-        
+        self._logger = logging.getLogger("uvicorn")
+        # self._logger = logging.getLogger(logger_config.name if logger_config and hasattr(logger_config, 'name') else __name__)
+        self._logger.info("Initializing FastAPIThreadedServer instance.")
 
         # ------------------------------------------------------------------
-        # Build the FastAPI instance – you can customise it before starting.
+        # Build the FastAPI instance and register routes
         # ------------------------------------------------------------------
         self.app = FastAPI(
-            **self.api_opts.__dict__
+            dependencies=[Depends(self.before_handler)],
+            **self.api_config.__dict__
 
         )
         self._register_builtin_routes()
         # import external routers:
+        router.logger_name = self.logger_config.name if self.logger_config and hasattr(self.logger_config, 'name') else __name__
         self.app.include_router(router)
 
         # Thread control
@@ -64,6 +50,36 @@ class FastAPIThreadedServer():
     # ----------------------------------------------------------------------
     # Public API
     # ----------------------------------------------------------------------
+    async def before_handler(self, request: Request):
+        # Fetch the route name
+        route = request.scope.get("route", None)
+        route_name = route.name if route else "unknown"
+        self._logger.debug(f"Handling request for route: {route_name}")
+        
+        # Try reading JSON safely
+        if request.method not in ("POST", "PUT", "PATCH"):
+            return  route_name # only validate bodies for these methods
+
+        data = {}
+        try:
+            data = await request.json()
+        except json.JSONDecodeError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid JSON in request body"
+            )
+
+        # Verify SHA256 header if present
+        if "x_payload_sha256" in request.headers:
+            sha256_header = request.headers["x_payload_sha256"]
+            if not verify_sha256(data=json.dumps(data), expected_hash=sha256_header):
+                raise HTTPException(
+                    status_code=400,
+                    detail="SHA256 hash mismatch for request body"
+                )
+
+        return route_name
+        
     def start(self) -> None:
         """Launch uvicorn in a daemon thread."""
         if self._server_thread and self._server_thread.is_alive():
@@ -73,7 +89,8 @@ class FastAPIThreadedServer():
         # watches the `_should_stop` event.
         config = uvicorn.Config(
             app=self.app,
-            **self.uvc_opts.__dict__
+            log_config=None, # we set up logging ourselves
+            **self.uvc_config.__dict__
         )
         self.server = uvicorn.Server(config)
 
@@ -113,16 +130,20 @@ class FastAPIThreadedServer():
         self.server = None
 
     # ----------------------------------------------------------------------
-    # Helper methods – feel free to extend or replace them.
+    # Default methods (routes)
     # ----------------------------------------------------------------------
     def _register_builtin_routes(self) -> None:
         """Add a few default endpoints (health, version, etc.)."""
 
-        @self.app.get("/healthz")
+        @self.app.get("/ping", name="ping", tags=["health"])
+        async def ping():
+            return {f"{self.meta.name}": "pong"}
+
+        @self.app.get("/healthz", tags=["health"])
         async def health():
             return {"status": "ok"}
 
-        @self.app.get("/version")
+        @self.app.get("/version", tags=["health"])
         async def version():
             return {"name": f"{self.meta.name}", "version": f"{self.meta.version}", "copyright": f"{self.meta.copyright}"}
 

@@ -28,7 +28,7 @@ class Arguments(argparse.ArgumentParser):
         self.add_argument('-lf', '--log-format',
             metavar='default', type=str, default='default', dest="log_format",
             help=f'Set the logging format (default: %(default)s). (choices: %(choices)s). env: LOG_FORMAT',
-            action=EnvDefault, envvar="LOG_LEVEL", choices=LOG_FORMATS.keys()
+            action=EnvDefault, envvar="LOG_LEVEL", choices=LOG_FORMATS
         )
         self.add_argument('--no-access-log',
             metavar="True|False",

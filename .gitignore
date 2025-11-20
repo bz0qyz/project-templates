@@ -1,0 +1,16 @@
+*.tar
+*.zip
+*.rar
+*.7z
+*.log
+*.tmp
+
+.DS_Store
+.vscode/
+.idea/
+
+.env
+.venv/
+
+build/
+dist/
