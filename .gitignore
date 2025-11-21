@@ -4,6 +4,7 @@
 *.7z
 *.log
 *.tmp
+*.bkp
 
 .DS_Store
 .vscode/

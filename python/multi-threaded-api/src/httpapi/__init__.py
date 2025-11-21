@@ -1,3 +1,4 @@
+import os
 import threading
 import signal
 import sys
@@ -5,6 +6,9 @@ import json
 import logging
 import uvicorn
 from fastapi import FastAPI, Depends, Request, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import FileResponse
 from .apiroutes import router
 from typing import Optional, List, Tuple
 from .helpers import verify_sha256
@@ -27,17 +31,21 @@ class FastAPIThreadedServer():
         self.logger_config = logger_config
         self.meta = meta
         self._logger = logging.getLogger("uvicorn")
-        # self._logger = logging.getLogger(logger_config.name if logger_config and hasattr(logger_config, 'name') else __name__)
         self._logger.info("Initializing FastAPIThreadedServer instance.")
 
         # ------------------------------------------------------------------
         # Build the FastAPI instance and register routes
         # ------------------------------------------------------------------
         self.app = FastAPI(
+            docs_url=None,
             dependencies=[Depends(self.before_handler)],
             **self.api_config.__dict__
 
         )
+        # register static files
+        print(f"Mounting static files from: {self.meta.static_dir}")
+        self.app.mount("/static", StaticFiles(directory=f"{self.meta.static_dir}"), name="static")
+        # register built-in routes
         self._register_builtin_routes()
         # import external routers:
         router.logger_name = self.logger_config.name if self.logger_config and hasattr(self.logger_config, 'name') else __name__
@@ -134,6 +142,21 @@ class FastAPIThreadedServer():
     # ----------------------------------------------------------------------
     def _register_builtin_routes(self) -> None:
         """Add a few default endpoints (health, version, etc.)."""
+
+        @self.app.get("/favicon.ico", include_in_schema=False)
+        async def favicon():
+            return FileResponse(os.path.join(self.meta.static_dir, "favicon.ico"), 
+            media_type="image/vnd.microsoft.icon")
+
+        @self.app.get("/docs", include_in_schema=False)
+        async def custom_swagger_ui():
+            return get_swagger_ui_html(
+                openapi_url=self.app.openapi_url,
+                title=self.app.title + " - Swagger UI",
+                swagger_css_url="/static/swagger-dark.css",
+                swagger_favicon_url="/static/favicon.ico",
+                swagger_ui_parameters={"syntaxHighlight": {"theme": "obsidian"}}
+            )
 
         @self.app.get("/ping", name="ping", tags=["health"])
         async def ping():

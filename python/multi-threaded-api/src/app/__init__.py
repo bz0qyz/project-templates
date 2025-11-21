@@ -28,7 +28,7 @@ class App:
         num_workers = (num_cpu_cores - 1)
 
         # initialize application metadata
-        self.meta = AppMetadata(self.PROJECT_NAME)
+        self.meta = AppMetadata(self.PROJECT_NAME, static_dir=f"{BASE_DIR}/static")
         init_log.append((INFO, f"Initializing application: {self.meta.name} v{self.meta.version} [license: {self.meta.license}]"))
         self.base_dir = BASE_DIR
         init_log.append((DEBUG, f"Base directory set to: {self.base_dir}"))
@@ -93,13 +93,14 @@ class App:
 
 class AppMetadata:
     """ Application metadata dataclass """
-    def __init__(self, project_name: str) -> None:
+    def __init__(self, project_name: str, static_dir: str) -> None:
         meta = metadata.metadata(project_name)
         self.name = meta["Name"]
         self.version = Version(meta["Version"])
         self.description = meta["Summary"]
         self.author = meta["Author-email"]
         self.license = meta["License-Expression"]
+        self.static_dir = static_dir
         self.copyright = f"\u00A9 {datetime.datetime.today().year} {self.author}"
         self.footer = f"{self.name} | {self.copyright}"
 

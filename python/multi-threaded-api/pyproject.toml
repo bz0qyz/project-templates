@@ -41,8 +41,10 @@ console = true
 entrypoint = "src/__main__.py"
 # Log level: CRITICAL, ERROR, WARNING, INFO, DEBUG, TRACE
 log-level = "INFO"
+icon = "assets/icon.png"
 datas = [
     ["README.md", "."],
     ["LICENSE", "."],
-    ["assets/", "assets/"]
+    ["assets/", "assets/"],
+    ["src/httpapi/static/", "src/httpapi/static/"],
 ]
