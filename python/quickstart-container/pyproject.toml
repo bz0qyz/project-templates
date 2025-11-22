@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=64", "wheel", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "quickstart-container"
+version = "0.0.1"
+description = "Base Container Starter"
+authors = [{name = "bz0qyz", email="bz0qyz@github.com"}]
+maintainers = []
+
+requires-python = ">=3.12"
+readme = {file = "README.md", content-type = "text/markdown"}
+
+license = "Unlicense"
+license-files = ["LICENSE"]
+keywords = ["container", "template"]
+
+dependencies = [
+    "Packaging>=25.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pyinstaller>=6.10"
+]
+
+[project.urls]
+home = "https://github.com/bz0qyz"
+project = "https://github.com/bz0qyz/project-templates"
+
+
+[tool.pyinstaller.build]
+onefile = true
+console = true
+entrypoint = "src/__main__.py"
+# Log level: CRITICAL, ERROR, WARNING, INFO, DEBUG, TRACE
+log-level = "INFO"
+icon = "assets/icon.png"
+datas = [
+    ["README.md", "."],
+    ["LICENSE", "."],
+    ["assets/", "assets/"],
+]
