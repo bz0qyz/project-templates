@@ -1,4 +1,4 @@
-# ![icon](assets/icon.png) FastAPI Multi-Threaded API Template
+# ![icon](assets/icon.svg) FastAPI Multi-Threaded API Template
 This repository provides a template for building a basic container application. It includes essential features such as configuration management, argument parsing, logging setup, and metadata handling.
 ## Features
 - Metadata from pyproject.toml
@@ -10,3 +10,5 @@ This repository provides a template for building a basic container application. 
   - JSON logging format
   - Debug mode
 
+# Archecture
+![architecture](assets/architecture.svg)
