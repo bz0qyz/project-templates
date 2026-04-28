@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "container-modules"
+version = "2026.4.0"
+description = "Container job with modules"
+authors = [
+    {name = "Russ Cook", email="bz0qyz@gmail.com"}
+]
+maintainers = []
+
+requires-python = ">=3.12"
+readme = {file = "README.md", content-type = "text/markdown"}
+
+keywords = ["python", "templates", "automation", "bootstrap"]
+
+dependencies = [
+    "pydantic>=2.12.4",
+    "Packaging>=25.0",
+    "requests>=2.32.5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pyinstaller>=6.18.0",
+]
+
+[project.urls]
+home = "https://www.64byte.com"
+project = "https://github.com/bz0qyz/project-templates"
+
+
+#[tool.pyinstaller.build]
+#onefile = true
+#console = true
+#entrypoint = "src/__main__.py"
+## Log level: CRITICAL, ERROR, WARNING, INFO, DEBUG, TRACE
+#log-level = "INFO"
+#datas = [
+#    ["README.md", "."],
+#]
+
+[project.scripts]
+container-runtime = "runtime.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
