@@ -23,6 +23,21 @@ class Arguments:
                             help=f'Set the log format. Formats: json, text. env: LOG_FORMAT',
                             action=EnvDefault, envvar="LOG_FORMAT", choices=['text', 'json']
                             )
+        parser.add_argument('--async',
+                            metavar='True|False', type=str, default=False, dest="async_enabled",
+                            help=f'Run each module asynchronously. env: ASYNC_ENABLED',
+                            action=EnvDefault, envvar="ASYNC_ENABLED"
+                            )
+        parser.add_argument('--async-workers',
+                            metavar='4', type=int, default=4, dest="async_workers",
+                            help=f'Set the number of workers. Only valid if --async is True. env: ASYNC_WORKERS',
+                            action=EnvDefault, envvar="ASYNC_WORKERS"
+                            )
+        parser.add_argument('--async-worker-timeout',
+                            metavar='60', type=int, default=60, dest="async_worker_timeout",
+                            help=f'Set the timeout for async workers. Only valid if --async is True. env: ASYNC_WORKER_TIMEOUT',
+                            action=EnvDefault, envvar="ASYNC_WORKER_TIMEOUT"
+                            )
         control_group = parser.add_argument_group("module control options")
 
         for module_name, module in modules.items():

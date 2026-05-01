@@ -36,7 +36,7 @@ class AppModule(AppModuleBase):
         super().shutdown()
         self.logger.debug(f"Closing connections...")
 
-    def run(self) -> None:
+    def main(self, *args, **kwargs) -> None:
         """"
         Main entry point for the module.
         returns: realm representation with changes
