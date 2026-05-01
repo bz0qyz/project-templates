@@ -53,18 +53,21 @@ class TextFormatter(logging.Formatter):
         return super().format(record)
 
 class AppLogger(logging.Logger):
-    def __init__(self, name: str, log_format: str, log_level: str = "info",
-                 debug: bool = False, base_path: str = None):
+    def __init__(self, name: str, log_format: str = "text", log_level: str = "info", base_path: str = None):
         super().__init__(name)
-
-        log_level = LOG_LEVELS[log_level]
-        if log_format == "text":
-            log_formater = TextFormatter(base_path=base_path, debug=debug)
-        else:
-            log_formater = JsonFormatter(base_path=base_path, debug=debug)
-
+        self.log_level = LOG_LEVELS[log_level]
+        self.base_path = base_path
         self._console_handler = logging.StreamHandler()
-        self._console_handler.setFormatter(log_formater)
         self.addHandler(self._console_handler)
-        self.setLevel(log_level)
-        app_logger = logging.getLogger(name)
+        self.configure(log_format=log_format, log_level=log_level)
+
+    def configure(self, log_format: str, log_level: str = "info") -> None:
+        debug = True if log_level == "debug" else False
+        self.log_level = LOG_LEVELS[log_level]
+        if log_format == "text":
+            log_formater = TextFormatter(base_path=self.base_path, debug=debug)
+        else:
+            log_formater = JsonFormatter(base_path=self.base_path, debug=debug)
+
+        self.setLevel(self.log_level)
+        self._console_handler.setFormatter(log_formater)

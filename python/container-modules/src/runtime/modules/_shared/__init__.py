@@ -1,30 +1,95 @@
 import argparse
 import logging
+from typing import Any
+from dataclasses import dataclass, field
 from runtime._shared import (EnvDefault)
 
-class AppModule:
-    def __init__(self, name: str, version: str, description: str = None, disabled: bool = False):
+
+class AppModuleBase:
+    immutable_properties = ("name", "version", "description", "enabled", "default_disabled", "_no_load")
+
+    @dataclass
+    class Argument:
+        flags: list[str]  # e.g. ["--port"] or ["-v", "--verbose"]
+        help: str = ""
+        default: Any = None
+        type: Any = str
+        required: bool = False
+        action: str = None
+        choices: list = None
+        metavar: str = None
+        dest: str = None
+        envvar: str = None
+
+        def add_to_parser(self, parser: argparse.ArgumentParser|argparse._ArgumentGroup):
+            """Register this argument on the given parser."""
+            kwargs = {k: v for k, v in {
+                "help": self.help,
+                "default": self.default,
+                "type": self.type,
+                "required": self.required,
+                "action": self.action,
+                "choices": self.choices,
+                "metavar": self.metavar,
+                "dest": self.dest,
+                "envvar": self.envvar,
+            }.items() if v is not None}
+
+            parser.add_argument(*self.flags, **kwargs)
+    class Arguments:
+        def add(self, name, value) -> None:
+            if hasattr(self, name):
+                raise AttributeError(f"Argument '{name}' already exists.")
+            setattr(self, name, value)
+
+    def __init__(self, name: str, version: str, description: str = None, enabled: bool = True, default_disabled: bool = False):
         self.name = name
         self.version = version
         self.description = description if description else f"{name} module"
-        self.disabled = disabled
-        self.logger = None
+        # Enabled/Disable the module from being used
+        self.enabled = enabled
+        # If the module is disabled on init, then set it to not be loaded
+        self._no_load = not self.enabled if self.enabled else False
+        if self._no_load:
+            print(f"{name} module load is disabled.")
+        # Determine if the module should be enabled by default or require user to explicitly enable it.
+        # By argument or ENV Variable
+        self.default_disabled = default_disabled
+        # Save a list of arguments to be loaded by the parent app
+        self.arguments = []
+        # Initialize the module logger
+        self.logger = logging.getLogger(self.name)
+        # Create an empty arguments object
+        self.args = self.Arguments()
+
 
     def __str__(self):
         return f"{self.name} module v{self.version}"
 
-    def register_args(self, parser: argparse.ArgumentParser):
-        args = parser.add_argument_group(f"{self.name} options")
+    @property
+    def load_disabled(self):
+        return self._no_load
 
-    def shutdown(self):
-        if self.logger:
-            self.logger.info(f"Closing module")
+    def add_argument(self, *args, **kwargs) -> None:
+        self.arguments.append(self.Argument(*args, **kwargs))
+
+    def init(self, **kwargs: dict) -> bool:
+        """
+        Initialize the module with optional keyword arguments.
+        This can be used to pass in shared resources like database connections, clients, etc.
+        """
+        for key, value in kwargs.items():
+            if key not in self.immutable_properties:
+                setattr(self, key, value)
+
+        return self.enabled
+
+    def register_args(self):
         pass
 
-    def set_logger(self, app_logger: logging.Logger):
-        self.logger = logging.getLogger(self.name)
-        self.logger.setLevel(app_logger.level)
-        for handler in app_logger.handlers:
-            self.logger.addHandler(handler)
-        self.logger.propagate = False
+    def shutdown(self):
+        pass
+
+    def run(self, *args, **kwargs):
+        pass
 

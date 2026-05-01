@@ -21,6 +21,7 @@ dependencies = [
     "pydantic>=2.12.4",
     "Packaging>=25.0",
     "requests>=2.32.5",
+    "tabulate>=0.10.0"
 ]
 
 [project.optional-dependencies]

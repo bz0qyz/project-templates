@@ -6,8 +6,12 @@ class Arguments:
     def __init__(self, app_name, app_description, app_version, log_levels: dict, modules: dict):
         parser = argparse.ArgumentParser(description=f"{app_description} v{app_version}")
         parser.add_argument("--version",
-                            help="Show program version and exit.",
-                            action="store_true"
+                            help="Show application version and exit.",
+                            action="store_true", dest="show_version"
+                            )
+        parser.add_argument("--modules",
+                            help="Show application modules and exit.",
+                            action="store_true", dest="show_modules"
                             )
         parser.add_argument('--log-level',
                             metavar='info', type=str, default='info', dest="log_level",
@@ -22,21 +26,27 @@ class Arguments:
         control_group = parser.add_argument_group("module control options")
 
         for module_name, module in modules.items():
-            if "module" in module and hasattr(module["module"], 'register_args'):
-                name = module["module"].name
-                disabled = module["module"].disabled
-                envvar = f"DISABLE_MODULE_{name.upper()}"
+            if module and hasattr(module, 'arguments'):
+                disabled = module.default_disabled
+                if disabled:
+                    prefix = "enable"
+                else:
+                    prefix = "disable"
+
+                env_var = f"{prefix.upper()}_MODULE_{module_name.upper().replace('-', '_')}"
                 control_group.add_argument(
-                    f'--disable-{name}',
+                    f'--{prefix}-{module_name}',
                     metavar="True|False",
-                    default=disabled,
-                    dest=f"disable_module_{name}",
+                    default=False,
+                    dest=f"{prefix}_module_{module_name.replace('-', '_')}",
                     type=str,
-                    help=f'Disable the {name} module. Default: {disabled}. ENV: {envvar}',
+                    help=f"{prefix.capitalize()} the '{module_name}' module. Default: False. ENV: {env_var}",
                     action=EnvDefault,
-                    envvar=envvar
+                    envvar=env_var
                 )
-                module["module"].register_args(parser)
+                args_group = parser.add_argument_group(f"{module_name} options")
+                for arg in module.arguments:
+                    arg.add_to_parser(args_group)
 
         # Set the app arguments property object
         self.args = parser.parse_known_args()

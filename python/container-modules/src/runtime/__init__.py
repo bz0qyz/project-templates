@@ -5,7 +5,7 @@ import platform
 import importlib
 from importlib import metadata
 from packaging.version import Version
-from pathlib import Path
+from tabulate import tabulate
 from .arguments import Arguments
 from ._shared import (AppLogger, LOG_LEVELS)
 
@@ -38,7 +38,13 @@ class App:
             if k.lower() == "project-url" and v.startswith("project,"):
                 self.project_url = v.split(",")[1].strip()
 
-        self.modules = self.load_modules(modules_dir=os.path.join(self.base_path, "modules"))
+        # Initialize the app logger
+        self.logger = AppLogger(name=self.name)
+        logging.root = self.logger
+        logging.Logger.root = self.logger
+        logging.Logger.manager = logging.Manager(self.logger)
+
+        self.modules = self.import_modules(modules_dir=os.path.join(self.base_path, "modules"))
 
         # Initialize the app arguments, including arguments from each module
         self.args = Arguments(
@@ -50,22 +56,91 @@ class App:
         ).args
 
 
-        # Initialize the app logger
-        self.debug = True if self.args and hasattr(self.args, "log_level") and self.args.log_level == "debug" else False
-        self.logger = AppLogger(
-            name=self.name,
-            log_format=self.args.log_format,
-            log_level=self.args.log_level
-        )
+        # Set logging level and format
+        self.logger.configure(log_level=self.args.log_level, log_format=self.args.log_format)
+        self.debug = self.logger.debug
 
+        self.init_modules()
+
+        # Show any logs that happened during init and before the logger was configured
         for log in self.init_logs:
             getattr(self.logger, log[0])(log[1])
         self.init_logs = []
 
     def __str__(self):
-        return f"{self.name} ver {self.version}"
+        return f"{self.name} version {self.version}"
 
-    def load_modules(self, modules_dir: str) -> dict:
+    def show_modules(self):
+        print(f"{self}")
+        print("Modules:")
+        tab_modules = []
+        for name, module in self.modules.items():
+            tab_modules.append(
+                [module.name, module.version, module.description, module.enabled, module.default_disabled])
+        print(tabulate(tab_modules, headers=["Module Name", "Version", "Description", "Enabled", "Default Disabled"],
+                       tablefmt="rounded_outline"))
+
+    def init_modules(self):
+        # Initialize the modules with app arguments
+        for name, module in self.modules.items():
+            # Module Control arguments:
+            # Verify that the module was not enabled by arg or ENV var
+            module_enable_arg = f"enable_module_{name.replace('-', '_')}"
+            is_enabled = getattr(self.args, module_enable_arg) if hasattr(self.args, module_enable_arg) else None
+            module_disable_arg = f"disable_module_{name.replace('-', '_')}"
+            is_disabled = getattr(self.args, module_disable_arg) if hasattr(self.args, module_disable_arg) else None
+
+            # If enable argument is False and the module is enabled, disable it
+            if not is_enabled and module.enabled and is_disabled is None:
+                if module.default_disabled != is_enabled:
+                    self.logger.warning(f"Disabling module: '{module.name}'. Module was disabled at runtime.")
+                module.enabled = False
+
+            # If disable argument is True and the module is enabled, disable it
+            elif is_disabled and module.enabled and is_enabled is None:
+                if module.default_disabled != is_disabled:
+                    self.logger.warning(f"Disabling module: '{module.name}'. Module was disabled at runtime.")
+                module.enabled = False
+
+            # If enable argument is True and the module is disabled, enable it
+            elif is_enabled and not module.enabled and is_disabled is None:
+                if module.default_disabled == is_enabled:
+                    self.logger.info(f"Enabling module: '{module.name}'. Module was enabled at runtime.")
+                module.enabled = True
+
+            # Don't initialize the module if it is disabled
+            if not module.enabled:
+                continue
+
+            self.logger.debug(f"Initializing module: '{module.name}' -> '{module.description}'")
+            self.init_module_args(module)
+            # Create module attributes from the app
+            # This can be called in __main__ to add additional attributes
+            if not hasattr(module, 'init'):
+                continue
+            try:
+                initialized = module.init(**{})
+                if not initialized:
+                    self.logger.warning(f"Module '{name}' failed to initialize and will be disabled.")
+                    module.enabled = False
+            except Exception as e:
+                self.logger.error(f"Exception loading module '{name}': {e}")
+                module.enabled = False
+
+    def init_module_args(self, module):
+        # Pass the module's argument values into the module
+        for arg in module.arguments:
+            if arg.dest and hasattr(self.args, arg.dest):
+                module.args.add(arg.dest, getattr(self.args, arg.dest))
+                continue
+            for flag in arg.flags:
+                if flag.startswith("--"):
+                    arg_name = flag[2:].replace("-", "_")
+                    if not hasattr(self.args, arg_name):
+                        continue
+                    module.args.add(arg_name, getattr(self.args, arg_name))
+
+    def import_modules(self, modules_dir: str) -> dict:
         """
         Discovers and imports all valid subpackages in the given directory.
         modules_dir can be an absolute or relative filesystem path.
@@ -80,7 +155,7 @@ class App:
         # The importable package name is just the final directory name
         package_name = os.path.basename(modules_dir)
 
-        loaded = {}
+        modules = {}
 
         for name in sorted(os.listdir(modules_dir)):
             if name.startswith("_"):
@@ -88,21 +163,22 @@ class App:
 
             module_path = os.path.join(modules_dir, name)
 
-            if not os.path.isdir(module_path):
-                continue
-            if not os.path.isfile(os.path.join(module_path, "__init__.py")) or not os.path.isfile(os.path.join(module_path, "__main__.py")):
+            if not os.path.isdir(module_path) or not os.path.isfile(os.path.join(module_path, "__init__.py")):
                 continue
 
+            # Import the module
             import_path = f"{package_name}.{name}"  # e.g. "modules.my_module"
-            main_path = f"{package_name}.{name}.__main__"
-
             try:
-                loaded[name] = {}
-                loaded[name]["module"] = importlib.import_module(import_path).module
-                loaded[name]["main"] = importlib.import_module(main_path)
-                self.init_logs.append(("info", f"Loaded: {import_path}"))
+                module = importlib.import_module(import_path).module
+                # Set the module to disabled if it's default_disabled is True
+                if module.load_disabled:
+                    continue
+                if module.enabled and module.default_disabled:
+                    module.enabled = False
+                modules[name] = module
+
             except Exception as e:
                 self.init_logs.append(("error", f"Failed to load {import_path}: {e}"))
-                self.init_logs.append(("error", f"{e}"))
 
-        return loaded
+
+        return modules
