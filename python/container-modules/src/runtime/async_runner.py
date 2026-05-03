@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_compl
 def run_module(name: str, mod_main, *args, **kwargs) -> tuple:
     """Call main() on a loaded module and return (name, result)."""
     start = perf_counter()
-    result = mod_main.main(*args, **kwargs)
+    result = mod_main.run(*args, **kwargs)
     elapsed = perf_counter() - start
     return name, result, elapsed
 
@@ -21,7 +21,7 @@ def run_modules_async(
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {
-            executor.submit(run_module, name, mod_main, *args, **kwargs): name
+            executor.submit(run_module, mod_main.name, mod_main, *args, **kwargs): name
             for name, mod_main in loaded_mains.items()
             if getattr(mod_main, "enabled", True)
         }
@@ -35,7 +35,7 @@ def run_modules_async(
                 except TimeoutError:
                     logger.error(f"Module: '{name}' timed out after {timeout}s")
                 except Exception as e:
-                    logger.error(f"Execution from module '{name}': {e}")
+                    logger.error(f"Exception from module '{name}': {e}")
         except TimeoutError:
             logger.error(f"Workers timed out after {timeout}s. Try setting a higher worker timeout with --async-workers")
 

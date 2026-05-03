@@ -4,6 +4,7 @@ DESCRIPTION=""
 VERSION="1.0.0"
 ENABLED=True
 DFAULT_DISABLED=False
+DIR_PREFIX=""
 
 MODULES_DIR="$(dirname "$(realpath "$0")")/src/runtime/modules"
 [[ ! -d "${MODULES_DIR}" ]] && { echo "Error: Modules directory not found at ${MODULES_DIR}"; exit 1; }
@@ -28,6 +29,11 @@ while [[ $# -gt 0 ]]; do
       shift
       shift
     ;;
+    -p|--directory-prefix)
+      DIR_PREFIX="${2}"
+      shift
+      shift
+    ;;
     -MD|--disabled)
       ENABLED=True
       shift
@@ -42,6 +48,7 @@ while [[ $# -gt 0 ]]; do
       echo "  -n, --name                Name of the module (required)"
       echo "  -d, --description         Description of the module (required)"
       echo "  -v, --version             Version of the module (default: 1.0.0)"
+      echo "  -p, --directory-prefix    Directory prefix for sorting (default: none)"
       echo "  -MD, --enabled            Globally disabled (default: False)"
       echo "  -MDD, --default-disabled  Set the module as default disabled. Requires argument or ENV variable to enable (default: False)"
       exit 0
@@ -52,12 +59,21 @@ if [[ -z "${NAME}" || -z "${DESCRIPTION}" ]]; then
   echo "Error: Name and Description is required"
   exit 1
 fi
+if [[ -n ${DIR_PREFIX} && ! ${DIR_PREFIX} =~ ^-?[0-9]+$ ]]; then
+  echo "Error: Directory prefix must be a number"
+  exit 1
+fi
 # Replace spaces with hyphens in the name for the module directory
 SAFE_NAME=$(echo "${NAME}" | tr ' ' '-')
 ENV_NAME=$(echo "${SAFE_NAME}" | tr '-' '_')
-DESTINATION_DIR="${MODULES_DIR}/${SAFE_NAME}"
+DIR_NAME="${SAFE_NAME}"
+if [[ -n "${DIR_PREFIX}" ]]; then
+  DIR_NAME="${DIR_PREFIX}-${SAFE_NAME}"
+fi
+
+DESTINATION_DIR="${MODULES_DIR}/${DIR_NAME}"
 if [[ -d "${DESTINATION_DIR}" ]]; then
-  echo "Error: Module with name ${SAFE_NAME} already exists at ${DESTINATION_DIR}"
+  echo "Error: Module with name ${DIR_NAME} already exists at ${DESTINATION_DIR}"
   exit 1
 fi
 

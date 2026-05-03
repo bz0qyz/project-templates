@@ -60,6 +60,7 @@ class App:
         self.logger.configure(log_level=self.args.log_level, log_format=self.args.log_format)
         self.debug = self.logger.debug
 
+        # Initialize the modules
         self.init_modules()
 
         # Show any logs that happened during init and before the logger was configured

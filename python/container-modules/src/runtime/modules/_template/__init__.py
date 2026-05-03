@@ -1,5 +1,5 @@
 import argparse
-from .._shared import AppModuleBase
+from .._base import AppModuleBase
 from runtime._shared import EnvDefault
 
 # Initialize the module sub-class from AppModule
@@ -32,18 +32,21 @@ class AppModule(AppModuleBase):
                           envvar="TEMPLATE_BAR"
                           )
 
-    def shutdown(self):
-        super().shutdown()
-        self.logger.debug(f"Closing connections...")
-
-    def main(self, *args, **kwargs) -> None:
+    def main(self, *args, **kwargs) -> bool:
         """"
         Main entry point for the module.
-        returns: realm representation with changes
+        returns: bool. Success or failure.
         """
         self.logger.info(f"Running module: '{self.name}'")
         for arg, value in self.args.__dict__.items():
             self.logger.info(f"Argument: '{arg}' -> '{value}' ({type(value)})")
+
+        # Example run. Simulates ramdom execution time and return value
+        import random
+        from time import sleep
+        sleep(random.randrange(3, 8))
+        return bool(random.randint(0, 1))
+
 
 
 # Initialize the module class
@@ -55,4 +58,15 @@ module = AppModule(
     default_disabled=True
 )
 module.register_args()
+
+# Sample function to be executed before the run
+@module.before_run
+def setup():
+    module.logger.info(f"[EXAMPLE] Running {module.name} pre-run hook setup()")
+
+# Sample function to be executed after the run is complete
+@module.after_run
+def teardown(result):
+    module.logger.info(f"[EXAMPLE] Running {module.name} post-run hook teardown()")
+    module.logger.info(f"run result={result}")
 

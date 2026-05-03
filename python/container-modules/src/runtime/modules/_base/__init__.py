@@ -50,8 +50,6 @@ class AppModuleBase:
         self.enabled = enabled
         # If the module is disabled on init, then set it to not be loaded
         self._no_load = not self.enabled if self.enabled else False
-        if self._no_load:
-            print(f"{name} module load is disabled.")
         # Determine if the module should be enabled by default or require user to explicitly enable it.
         # By argument or ENV Variable
         self.default_disabled = default_disabled
@@ -61,6 +59,9 @@ class AppModuleBase:
         self.logger = logging.getLogger(self.name)
         # Create an empty arguments object
         self.args = self.Arguments()
+        # Add special hook functions
+        self._before_hooks = []
+        self._after_hooks = []
 
 
     def __str__(self):
@@ -69,6 +70,17 @@ class AppModuleBase:
     @property
     def load_disabled(self):
         return self._no_load
+
+    def before_run(self, fn):
+        self._before_hooks.append(fn)
+        return fn
+
+    def after_run(self, fn):
+        self._after_hooks.append(fn)
+        return fn
+
+    def shutdown(self):
+        pass
 
     def add_argument(self, *args, **kwargs) -> None:
         self.arguments.append(self.Argument(*args, **kwargs))
@@ -87,9 +99,14 @@ class AppModuleBase:
     def register_args(self):
         pass
 
-    def shutdown(self):
+    def main(self, *args, **kwargs) -> bool:
         pass
 
     def run(self, *args, **kwargs):
-        pass
+        for fn in self._before_hooks:
+            fn()
+        result = self.main(*args, **kwargs)
+        for fn in self._after_hooks:
+            fn(result)
+        return result
 
