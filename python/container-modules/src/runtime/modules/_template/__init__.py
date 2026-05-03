@@ -9,6 +9,7 @@ class AppModule(AppModuleBase):
         Add argparse arguments for the module.
         same basic format as an argparse argument,
         except that the arguments must be in a list.
+        NOTE: When using EnvDefault (Environment variables), use type 'str' for boolean arguments.
         WARNING: argument options 'envvar' and 'dest' must be unique in all modules
         WARNING: if no 'dest' is specified, only argument flags that start with '--' will work.
         :return: None
@@ -26,7 +27,7 @@ class AppModule(AppModuleBase):
         self.add_argument(['--template-bar'],
                           default=False,
                           help='example boolean argument bar',
-                          type=bool,
+                          type=str,
                           dest="template_bar",
                           action=EnvDefault,
                           envvar="TEMPLATE_BAR"
@@ -59,7 +60,7 @@ module = AppModule(
 )
 module.register_args()
 
-# Sample function to be executed before the run
+# Example function to be executed before the run
 @module.before_run
 def setup():
     module.logger.info(f"[EXAMPLE] Running {module.name} pre-run hook setup()")

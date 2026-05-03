@@ -72,7 +72,8 @@ class App:
         return f"{self.name} version {self.version}"
 
     def show_modules(self):
-        print(f"{self}")
+        """ Show modules in a table """
+        print(f"{self}") # Prints app name and version (__str__)
         print("Modules:")
         tab_modules = []
         for name, module in self.modules.items():
@@ -82,7 +83,7 @@ class App:
                        tablefmt="rounded_outline"))
 
     def init_modules(self):
-        # Initialize the modules with app arguments
+        """ Initialize the modules with app arguments """
         for name, module in self.modules.items():
             # Module Control arguments:
             # Verify that the module was not enabled by arg or ENV var
@@ -129,7 +130,7 @@ class App:
                 module.enabled = False
 
     def init_module_args(self, module):
-        # Pass the module's argument values into the module
+        """ Pass the module's argument values into the module """
         for arg in module.arguments:
             if arg.dest and hasattr(self.args, arg.dest):
                 module.args.add(arg.dest, getattr(self.args, arg.dest))

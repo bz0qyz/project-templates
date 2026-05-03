@@ -3,7 +3,7 @@ from time import perf_counter
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 
 def run_module(name: str, mod_main, *args, **kwargs) -> tuple:
-    """Call main() on a loaded module and return (name, result)."""
+    """Call run() on a loaded module and return (name, result)."""
     start = perf_counter()
     result = mod_main.run(*args, **kwargs)
     elapsed = perf_counter() - start
@@ -16,6 +16,7 @@ def run_modules_async(
     max_workers: int = 4,
     **kwargs
 ) -> dict:
+    """ Run all modules asynchronously """
     results = {}
     logger = logging.getLogger("async_runner")
 

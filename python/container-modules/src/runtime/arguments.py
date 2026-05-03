@@ -38,8 +38,11 @@ class Arguments:
                             help=f'Set the timeout for async workers. Only valid if --async is True. env: ASYNC_WORKER_TIMEOUT',
                             action=EnvDefault, envvar="ASYNC_WORKER_TIMEOUT"
                             )
+        # Add an argument group for control of each module
         control_group = parser.add_argument_group("module control options")
 
+        # Load arguments from each module
+        # Add a control argument for enabling or disabling each module based on the module's default_disabled property
         for module_name, module in modules.items():
             if module and hasattr(module, 'arguments'):
                 disabled = module.default_disabled
@@ -70,6 +73,7 @@ class Arguments:
         if isinstance(self.args, tuple):
             self.args = self.args[0]
 
+        # Convert str boolean values into booleans
         for arg in vars(self.args):
             # Set boolean strings to bool type
             bset = {"true": True, "1": True, "false": False, "0": False}

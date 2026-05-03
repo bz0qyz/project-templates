@@ -6,6 +6,7 @@ from runtime._shared import (EnvDefault)
 
 
 class AppModuleBase:
+    """" Module Base class """
     immutable_properties = ("name", "version", "description", "enabled", "default_disabled", "_no_load")
 
     @dataclass

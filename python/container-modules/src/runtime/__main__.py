@@ -18,6 +18,7 @@ def signal_handler(sig, frame):
 
 def main():
     signal.signal(signal.SIGINT, signal_handler)
+    # Mark the start time for elapsed time counter
     run_start = perf_counter()
 
     # Show the application version
@@ -47,7 +48,7 @@ def main():
         app.logger.info(f"Running modules asynchronously with {app.args.async_workers} workers and {app.args.async_worker_timeout}s timeout")
 
     # Log the argument values and types for debugging
-    # Remove this when implementing this template
+    # TODO: Remove this when implementing this template
     for arg, value in app.args.__dict__.items():
         app.logger.info(f"Argument: '{arg}' -> '{value}' ({type(value)})")
 
@@ -70,7 +71,9 @@ def main():
             except Exception as e:
                 app.logger.error(f"Execution from module '{name}': {e}")
 
+    # Generate the elapsed time
     elapsed = perf_counter() - run_start
+
     ## Show the module results
     for name, output in results.items():
         app.logger.info(f"Result: '{name}' -> {output}")
