@@ -13,10 +13,10 @@ LOG_LEVELS = {
 DATE_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
 
 class JsonFormatter(logging.Formatter):
-    def __init__(self, base_path: str, debug: bool = False):
+    def __init__(self, base_path: str, dev_log: bool = False):
         super().__init__()
         self.base_path = base_path
-        self.debug = debug
+        self.dev_log = dev_log
 
     def format(self, record: logging.LogRecord) -> str:
         entry = {
@@ -25,8 +25,8 @@ class JsonFormatter(logging.Formatter):
             "logger":    record.name,
             "message":   record.getMessage(),
         }
-        if self.debug:
-            rel = os.path.relpath(record.pathname, self.base_path)
+        if self.dev_log:
+            rel = os.path.relpath(record.pathname).replace(self.base_path, ".")
             entry["file"]     = rel if not rel.startswith("..") else record.pathname
             entry["line"]     = record.lineno
             entry["function"] = record.funcName
@@ -38,17 +38,17 @@ class TextFormatter(logging.Formatter):
     _BASE_FMT  = "%(asctime)s %(levelname)-8s %(name)s: %(message)s"
     _DEBUG_FMT = "%(asctime)s %(levelname)-8s %(name)s: %(pathname)s:%(lineno)d %(funcName)s %(message)s"
 
-    def __init__(self, base_path: str, debug: bool = False):
+    def __init__(self, base_path: str, dev_log: bool = False):
         super().__init__(
-            fmt=self._DEBUG_FMT if debug else self._BASE_FMT,
+            fmt=self._DEBUG_FMT if dev_log else self._BASE_FMT,
             datefmt=DATE_FORMAT,
         )
         self.base_path = base_path
-        self.debug = debug
+        self.dev_log = dev_log
 
     def format(self, record: logging.LogRecord) -> str:
-        if self.debug:
-            rel = os.path.relpath(record.pathname, self.base_path)
+        if self.dev_log:
+            rel = os.path.relpath(record.pathname).replace(self.base_path, ".")
             record.pathname = rel if not rel.startswith("..") else record.pathname
         return super().format(record)
 
@@ -57,17 +57,18 @@ class AppLogger(logging.Logger):
         super().__init__(name)
         self.log_level = LOG_LEVELS[log_level]
         self.base_path = base_path
+        self.dev_log = False
         self._console_handler = logging.StreamHandler()
         self.addHandler(self._console_handler)
         self.configure(log_format=log_format, log_level=log_level)
 
-    def configure(self, log_format: str, log_level: str = "info") -> None:
-        debug = True if log_level == "debug" else False
+    def configure(self, log_format: str, log_level: str = "info", dev_log: bool = False) -> None:
+        dev_log = dev_log
         self.log_level = LOG_LEVELS[log_level]
         if log_format == "text":
-            log_formater = TextFormatter(base_path=self.base_path, debug=debug)
+            log_formater = TextFormatter(base_path=self.base_path, dev_log=dev_log)
         else:
-            log_formater = JsonFormatter(base_path=self.base_path, debug=debug)
+            log_formater = JsonFormatter(base_path=self.base_path, dev_log=dev_log)
 
         self.setLevel(self.log_level)
         self._console_handler.setFormatter(log_formater)

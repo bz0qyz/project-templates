@@ -1,14 +1,13 @@
 import sys
 import signal
-from time import perf_counter
-from . import App
-from .async_runner import run_modules_async
+from time import (sleep, perf_counter)
+from runtime import App
+from runtime.async_runner import run_modules_async
 
 # Initialize the application
 app = App()
 
-
-def shutdown_handler(exit_code=0, kc_api=None):
+def shutdown_handler(exit_code=0):
     """ Graceful shutdown of all connections and resources. """
     sys.exit(exit_code)
 
@@ -16,17 +15,8 @@ def signal_handler(sig, frame):
     print('\nAborting...')
     shutdown_handler()
 
-def main():
-    signal.signal(signal.SIGINT, signal_handler)
-    # Mark the start time for elapsed time counter
-    run_start = perf_counter()
-
-    # Show the application version
-    if app.args.show_version:
-        print(f"{app}")
-        exit(0)
-
-    # Initialize the modules
+def init_modules(app: App) -> None:
+    """ Initialize the modules """
     for name, module in app.modules.items():
         if not module.enabled or not hasattr(module, 'init'):
             continue
@@ -39,21 +29,16 @@ def main():
             app.logger.error(f"Failed to load module '{name}': {e}")
             module.enabled = False
 
-    if app.args.show_modules:
-        app.show_modules()
-        exit(0)
+def run_modules(app: App) -> dict:
+    """ Run the modules """
+    if app.num_enabled_modules == 0:
+        app.logger.warning("No modules enabled. Nothing to do.")
+        shutdown_handler(exit_code=0)
 
-    app.logger.info(f"Starting {app}")
-    if app.args.async_enabled:
-        app.logger.info(f"Running modules asynchronously with {app.args.async_workers} workers and {app.args.async_worker_timeout}s timeout")
-
-    # Log the argument values and types for debugging
-    # TODO: Remove this when implementing this template
-    for arg, value in app.args.__dict__.items():
-        app.logger.info(f"Argument: '{arg}' -> '{value}' ({type(value)})")
-
-    # Run the modules
     results = {}
+    # Mark the start time for elapsed time counter
+    run_start = perf_counter()
+    app.logger.debug(f"Running {app.num_enabled_modules} active module(s)")
     if app.args.async_enabled:
         # Run the modules asynchronously
         results = run_modules_async(
@@ -73,9 +58,48 @@ def main():
 
     # Generate the elapsed time
     elapsed = perf_counter() - run_start
+    app.logger.info(f"All modules completed in {elapsed:.3f}s.")
+    return results
 
+def process_results(results: dict) -> None:
     ## Show the module results
     for name, output in results.items():
         app.logger.info(f"Result: '{name}' -> {output}")
-    app.logger.info(f"All modules completed in {elapsed:.3f}s. Shutting down.")
+
+def main():
+    signal.signal(signal.SIGINT, signal_handler)
+
+    # Show the application version
+    if app.args.show_version:
+        print(f"{app}")
+        sys.exit(0)
+
+    init_modules(app=app)
+
+    if app.args.show_modules:
+        app.show_modules()
+        sys.exit(0)
+
+    app.logger.info(f"Starting {app}")
+    if app.args.async_enabled:
+        app.logger.info(f"Running modules asynchronously with {app.args.async_workers} workers and {app.args.async_worker_timeout}s timeout")
+
+    # Log the argument values and types for debugging
+    # TODO: Remove this when implementing this template
+    for arg, value in app.args.__dict__.items():
+        app.logger.info(f"Argument: '{arg}' -> '{value}' ({type(value)})")
+
+    if app.args.one_shot:
+        results = run_modules(app=app)
+        process_results(results=results)
+    else:
+        while True:
+            results = run_modules(app=app)
+            process_results(results=results)
+            app.logger.debug(f"Sleeping. Running again in {app.args.run_interval} minute(s).")
+            sleep(app.args.run_interval * 60)
+
     shutdown_handler()
+
+if __name__ == '__main__':
+    main()

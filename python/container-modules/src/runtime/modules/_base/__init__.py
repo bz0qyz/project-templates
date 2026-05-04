@@ -24,6 +24,8 @@ class AppModuleBase:
 
         def add_to_parser(self, parser: argparse.ArgumentParser|argparse._ArgumentGroup):
             """Register this argument on the given parser."""
+            if self.envvar and not 'ENV:' in self.envvar:
+                self.help = f"{self.help} ENV: {self.envvar}"
             kwargs = {k: v for k, v in {
                 "help": self.help,
                 "default": self.default,
@@ -50,7 +52,7 @@ class AppModuleBase:
         # Enabled/Disable the module from being used
         self.enabled = enabled
         # If the module is disabled on init, then set it to not be loaded
-        self._no_load = not self.enabled if self.enabled else False
+        self._no_load = not self.enabled #if self.enabled else False
         # Determine if the module should be enabled by default or require user to explicitly enable it.
         # By argument or ENV Variable
         self.default_disabled = default_disabled
@@ -61,9 +63,9 @@ class AppModuleBase:
         # Create an empty arguments object
         self.args = self.Arguments()
         # Add special hook functions
+        self._post_init_hooks = []
         self._before_hooks = []
         self._after_hooks = []
-
 
     def __str__(self):
         return f"{self.name} module v{self.version}"
@@ -71,6 +73,25 @@ class AppModuleBase:
     @property
     def load_disabled(self):
         return self._no_load
+
+    @property
+    def control_arg_prefix(self):
+        """ Determine prefix for control arguments """
+        return "enable" if self.default_disabled else "disable"
+
+    @property
+    def control_arg_dest(self):
+        """ Determine prefix for control arguments """
+        return f"{self.control_arg_prefix}_module_{self.name.replace('-', '_')}"
+
+    @property
+    def control_env_name(self) -> str:
+        return f"{self.control_arg_prefix.upper()}_MODULE_{self.name.upper().replace('-', '_')}"
+
+
+    def post_init(self, fn):
+        self._post_init_hooks.append(fn)
+        return fn
 
     def before_run(self, fn):
         self._before_hooks.append(fn)
@@ -94,6 +115,10 @@ class AppModuleBase:
         for key, value in kwargs.items():
             if key not in self.immutable_properties:
                 setattr(self, key, value)
+
+        # Run post init hooks
+        for fn in self._post_init_hooks:
+            fn()
 
         return self.enabled
 

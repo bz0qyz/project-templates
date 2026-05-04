@@ -13,31 +13,54 @@ class Arguments:
                             help="Show application modules and exit.",
                             action="store_true", dest="show_modules"
                             )
-        parser.add_argument('--log-level',
-                            metavar='info', type=str, default='info', dest="log_level",
-                            help=f'Set the log level. Levels: {', '.join(log_levels.keys())}. env: LOG_LEVEL',
-                            action=EnvDefault, envvar="LOG_LEVEL", choices=log_levels.keys()
-                            )
-        parser.add_argument('--log-format',
-                            metavar='json', type=str, default='json', dest="log_format",
-                            help=f'Set the log format. Formats: json, text. env: LOG_FORMAT',
-                            action=EnvDefault, envvar="LOG_FORMAT", choices=['text', 'json']
+        parser.add_argument('-cf', '--config-file',
+                            metavar='/path/to/config.json', type=str, default=None,
+                            help='Use a configuration file for argument values. Values override args and ENV vars. ENV: CONFIG_FILE',
+                            action=EnvDefault, envvar="CONFIG_FILE"
                             )
         parser.add_argument('--async',
-                            metavar='True|False', type=str, default=False, dest="async_enabled",
-                            help=f'Run each module asynchronously. env: ASYNC_ENABLED',
+                            metavar='True|False', type=str, default=True, dest="async_enabled",
+                            help=f'Run each module asynchronously. Default True. ENV: ASYNC_ENABLED',
                             action=EnvDefault, envvar="ASYNC_ENABLED"
                             )
         parser.add_argument('--async-workers',
                             metavar='4', type=int, default=4, dest="async_workers",
-                            help=f'Set the number of workers. Only valid if --async is True. env: ASYNC_WORKERS',
+                            help=f'Set the number of workers. Only valid if --async is True. ENV: ASYNC_WORKERS',
                             action=EnvDefault, envvar="ASYNC_WORKERS"
                             )
         parser.add_argument('--async-worker-timeout',
                             metavar='60', type=int, default=60, dest="async_worker_timeout",
-                            help=f'Set the timeout for async workers. Only valid if --async is True. env: ASYNC_WORKER_TIMEOUT',
+                            help=f'Set the timeout for async workers. Only valid if --async is True. ENV: ASYNC_WORKER_TIMEOUT',
                             action=EnvDefault, envvar="ASYNC_WORKER_TIMEOUT"
                             )
+        parser.add_argument('--oneshot', '--cron',
+                            default=True, type=str, dest="one_shot",
+                            help='Run one time and exit. If not set, the app will run continuously at the interval set by --interval-minutes. ENV: ONESHOT or CRON',
+                            action=EnvDefault,
+                            envvar=["ONESHOT", "CRON"]
+                            )
+        parser.add_argument('-i', '--interval-minutes',
+                            metavar="15",
+                            default=10,
+                            dest="run_interval", type=int,
+                            help='Run Interval. Only valid if --oneshot is not set. ENV: RUN_INTERVAL',
+                            action=EnvDefault, envvar="RUN_INTERVAL"
+                            )
+        log_group = parser.add_argument_group("logging options")
+        log_group.add_argument('--log-level',
+                               metavar='info', type=str, default='info', dest="log_level",
+                               help=f'Set the log level. Levels: {', '.join(log_levels.keys())}. ENV: LOG_LEVEL',
+                               action=EnvDefault, envvar="LOG_LEVEL", choices=log_levels.keys()
+                               )
+        log_group.add_argument('--log-format',
+                               metavar='text', type=str, default='text', dest="log_format",
+                               help=f'Set the log format. Formats: json, text. ENV: LOG_FORMAT',
+                               action=EnvDefault, envvar="LOG_FORMAT", choices=['text', 'json']
+                               )
+        log_group.add_argument("--dev-log",
+                               help="development mode. Add file paths to debug logging.",
+                               action="store_true", dest="dev_log"
+                               )
         # Add an argument group for control of each module
         control_group = parser.add_argument_group("module control options")
 
@@ -45,24 +68,19 @@ class Arguments:
         # Add a control argument for enabling or disabling each module based on the module's default_disabled property
         for module_name, module in modules.items():
             if module and hasattr(module, 'arguments'):
-                disabled = module.default_disabled
-                if disabled:
-                    prefix = "enable"
-                else:
-                    prefix = "disable"
-
-                env_var = f"{prefix.upper()}_MODULE_{module_name.upper().replace('-', '_')}"
+                prefix = module.control_arg_prefix
+                env_var = module.control_env_name
                 control_group.add_argument(
-                    f'--{prefix}-{module_name}',
+                    f'--{prefix}-{module.name}',
                     metavar="True|False",
                     default=False,
-                    dest=f"{prefix}_module_{module_name.replace('-', '_')}",
+                    dest=f"{module.control_arg_dest}",
                     type=str,
-                    help=f"{prefix.capitalize()} the '{module_name}' module. Default: False. ENV: {env_var}",
+                    help=f"{prefix.capitalize()} the '{module.name}' module. Default: False. ENV: {env_var}",
                     action=EnvDefault,
                     envvar=env_var
                 )
-                args_group = parser.add_argument_group(f"{module_name} options")
+                args_group = parser.add_argument_group(f"{module.name} options")
                 for arg in module.arguments:
                     arg.add_to_parser(args_group)
 
@@ -78,7 +96,7 @@ class Arguments:
             # Set boolean strings to bool type
             bset = {"true": True, "1": True, "false": False, "0": False}
             value = getattr(self.args, arg)
-            if type(value) not in  [str, int, bool]:
+            if type(value) not in  [str, bool]:
                 continue
             if str(value).lower() in bset.keys():
                 setattr(self.args, arg, bset[str(value).lower()])

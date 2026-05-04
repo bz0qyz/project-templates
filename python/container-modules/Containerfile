@@ -1,0 +1,41 @@
+FROM alpine:latest AS builder
+COPY . /app
+WORKDIR /app
+RUN set -e; \
+    apk update \
+    && apk add --no-cache --virtual .build-deps \
+    build-base \
+    linux-headers \
+    git \
+    curl \
+    python3 \
+    py3-pip
+
+RUN set -e; \
+    VENV_DIR=/tmp/venv; \
+    python3 -m venv "${VENV_DIR}" \
+    && source "${VENV_DIR}/bin/activate" \
+    && pip install --no-cache-dir --upgrade pip wheel pyinstaller \
+    && pip install -e . \
+    && python3 build.py --entrypoint src/runtime/__main__.py --source-path /app \
+    && /app/dist/app.bin --version
+
+FROM alpine:latest AS runtime
+ENV TMP_DIR=/var/tmp
+ENV TERM=linux
+ENV PYTHONUNBUFFERED=1
+ENV USER_NAME=appuser
+ENV USER_UID=10001
+ENV USER_HOME=/home/appuser
+
+COPY --from=builder --chown=${USER_UID}:${USER_UID} /app/dist/app.bin /usr/local/bin/container-runtime
+
+RUN set -e; \
+  apk update \
+  && apk add --no-cache bash \
+  && adduser -D -u ${USER_UID} -h "${USER_HOME}" -s /bin/bash ${USER_NAME}
+
+WORKDIR ${USER_HOME}
+USER ${USER_NAME}
+
+CMD [ "/usr/local/bin/container-runtime" ]

@@ -17,21 +17,21 @@ class AppModule(AppModuleBase):
 
         # Example Arguments
         self.add_argument(['--template-foo'],
-                        default='bar',
-                        help='example string argument foo',
-                        dest = "template_foo",
-                        type = str,
-                        action = EnvDefault,
-                        envvar = "TEMPLATE_FOO"
+                default='bar',
+                help='example string argument foo',
+                type=str,
+                dest="template_foo",
+                action=EnvDefault,
+                envvar="TEMPLATE_FOO"
         )
         self.add_argument(['--template-bar'],
-                          default=False,
-                          help='example boolean argument bar',
-                          type=str,
-                          dest="template_bar",
-                          action=EnvDefault,
-                          envvar="TEMPLATE_BAR"
-                          )
+                default=False,
+                help='example boolean argument bar',
+                type=str,
+                dest="template_bar",
+                action=EnvDefault,
+                envvar="TEMPLATE_BAR"
+        )
 
     def main(self, *args, **kwargs) -> bool:
         """"
@@ -60,12 +60,23 @@ module = AppModule(
 )
 module.register_args()
 
+"""
+FUNCTION DECORATORS:
+1. @module.post_init - Specify functions that will execute immediately after the module is initialized.
+2. @module.before_run - Specify functions that will execute before the module's main function
+3. @module.after_run - Specify functions that will execute after the module completes
+"""
+# Example function to be executed post init
+@module.post_init
+def setup() -> None:
+    module.logger.info(f"[EXAMPLE] Running {module.name} post-init hook setup()")
+
 # Example function to be executed before the run
 @module.before_run
-def setup():
-    module.logger.info(f"[EXAMPLE] Running {module.name} pre-run hook setup()")
+def prepare():
+    module.logger.info(f"[EXAMPLE] Running {module.name} pre-run hook prepare()")
 
-# Sample function to be executed after the run is complete
+# Example function to be executed after the run is complete
 @module.after_run
 def teardown(result):
     module.logger.info(f"[EXAMPLE] Running {module.name} post-run hook teardown()")

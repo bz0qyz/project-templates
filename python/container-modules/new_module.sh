@@ -91,13 +91,14 @@ echo "------------------------------------------------------------"
 cp -R "${TEMPLATE_DIR}" "${DESTINATION_DIR}"
 DESTINATION_INIT="${DESTINATION_DIR}/__init__.py"
 sed -i .tmp \
-  -e "s/template/${SAFE_NAME}/g" \
-  -e "s/TEMPLATE/$(echo ${ENV_NAME}| tr '[:lower:]' '[:upper:]')/g" \
+  -e "s/dest=\"template_\([^\"]*\)\"/dest=\"${ENV_NAME}_\1\"/g" \
+  -e "s/envvar=\"TEMPLATE_\([^\"]*\)\"/envvar=\"$(echo ${ENV_NAME}| tr '[:lower:]' '[:upper:]')_\1\"/g" \
   -e "s/\(name=\"\)[^\"]*\"/\1${SAFE_NAME}\"/" \
   -e "s/\(description=\"\)[^\"]*\"/\1${DESCRIPTION}\"/" \
   -e "s/\(version=\"\)[^\"]*\"/\1${VERSION}\"/" \
   -e "s/\(enabled=\)[^,]*/\1${ENABLED}/" \
   -e "s/\(default_disabled=\)[^,]*/\1${DFAULT_DISABLED}/" \
+  -e "s/template/${SAFE_NAME}/g" \
   "${DESTINATION_INIT}"
 
 [[ -e "${DESTINATION_INIT}" ]] && rm -f "${DESTINATION_INIT}.tmp"

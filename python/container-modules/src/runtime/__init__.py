@@ -1,10 +1,12 @@
 import os
 import sys
+import json
 import logging
 import platform
 import importlib
 from importlib import metadata
 from packaging.version import Version
+from types import NoneType
 from tabulate import tabulate
 from .arguments import Arguments
 from ._shared import (AppLogger, LOG_LEVELS)
@@ -25,11 +27,14 @@ class App:
         self.project_url = None
         self.system = f"{platform.system()}".lower()
         self.base_path = os.path.dirname(os.path.abspath(__file__))
+        self.modules_path = os.path.join(self.base_path, "modules")
         self.packaged = False
         self.init_logs = []
+        # If the app is packaged (pyinstaller) set the base_path correctly
         if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
             self.packaged = True
             self.base_path = sys._MEIPASS
+            self.modules_path = os.path.join(self.base_path, "runtime", "modules")
 
         # Get the project URL from metadata
         for k, v in meta.items():
@@ -39,12 +44,12 @@ class App:
                 self.project_url = v.split(",")[1].strip()
 
         # Initialize the app logger
-        self.logger = AppLogger(name=self.name)
+        self.logger = AppLogger(name=self.name, base_path=self.base_path)
         logging.root = self.logger
         logging.Logger.root = self.logger
         logging.Logger.manager = logging.Manager(self.logger)
 
-        self.modules = self.import_modules(modules_dir=os.path.join(self.base_path, "modules"))
+        self.modules = self.import_modules(modules_dir=self.modules_path)
 
         # Initialize the app arguments, including arguments from each module
         self.args = Arguments(
@@ -55,9 +60,32 @@ class App:
             modules=self.modules
         ).args
 
+        # Use a configuration file if one is specified. Save the values into self.args.
+        if hasattr(self.args, "config_file") and self.args.config_file and isinstance(self.args.config_file, str):
+            self.args.config_file = os.path.realpath(self.args.config_file)
+            if not os.path.isfile(self.args.config_file):
+                self.logger.warning(f"Configuration file not found: '{self.args.config_file}'")
+                return
+
+            self.logger.info(f"Using configuration file: {self.args.config_file}")
+            with open(self.args.config_file) as config_file:
+                try:
+                    config = json.load(config_file)
+                except json.decoder.JSONDecodeError as e:
+                    self.logger.error(f"Failed to load configuration file: {e}")
+                    return
+            for arg_name in config:
+                if hasattr(self.args, arg_name) and config[arg_name] is not None:
+                    # get the variable type for each arg and matching config var
+                    arg_type = type(getattr(self.args, arg_name))
+                    config_type = type(config[arg_name])
+                    # If the types also match (or NoneType) replace the arg value with the config value
+                    if arg_type == config_type or arg_type is NoneType:
+                        setattr(self.args, arg_name, config[arg_name])
 
         # Set logging level and format
-        self.logger.configure(log_level=self.args.log_level, log_format=self.args.log_format)
+        self.logger.configure(log_level=self.args.log_level, log_format=self.args.log_format,
+                              dev_log=self.args.dev_log)
         self.debug = self.logger.debug
 
         # Initialize the modules
@@ -70,6 +98,15 @@ class App:
 
     def __str__(self):
         return f"{self.name} version {self.version}"
+
+    @property
+    def num_enabled_modules(self):
+        """ Number of modules with the enabled attribute set to True """
+        ct = 0
+        for module in self.modules.values():
+            if module.enabled:
+                ct += 1
+        return ct
 
     def show_modules(self):
         """ Show modules in a table """
@@ -86,29 +123,20 @@ class App:
         """ Initialize the modules with app arguments """
         for name, module in self.modules.items():
             # Module Control arguments:
-            # Verify that the module was not enabled by arg or ENV var
-            module_enable_arg = f"enable_module_{name.replace('-', '_')}"
-            is_enabled = getattr(self.args, module_enable_arg) if hasattr(self.args, module_enable_arg) else None
-            module_disable_arg = f"disable_module_{name.replace('-', '_')}"
-            is_disabled = getattr(self.args, module_disable_arg) if hasattr(self.args, module_disable_arg) else None
+            # Enable or disable the module if it was modified by arg or ENV var
+            module_control = (module.control_arg_dest, getattr(self.args, module.control_arg_dest, False))
+            if isinstance(module_control, tuple) and module_control[1]:
+                if module_control[0].startswith("disable"):
+                    if module.enabled:
+                        if module.default_disabled != module_control[1]:
+                            self.logger.warning(f"Disabling module: '{module.name}'. Module was disabled at runtime.")
+                        module.enabled = False
 
-            # If enable argument is False and the module is enabled, disable it
-            if not is_enabled and module.enabled and is_disabled is None:
-                if module.default_disabled != is_enabled:
-                    self.logger.warning(f"Disabling module: '{module.name}'. Module was disabled at runtime.")
-                module.enabled = False
-
-            # If disable argument is True and the module is enabled, disable it
-            elif is_disabled and module.enabled and is_enabled is None:
-                if module.default_disabled != is_disabled:
-                    self.logger.warning(f"Disabling module: '{module.name}'. Module was disabled at runtime.")
-                module.enabled = False
-
-            # If enable argument is True and the module is disabled, enable it
-            elif is_enabled and not module.enabled and is_disabled is None:
-                if module.default_disabled == is_enabled:
-                    self.logger.info(f"Enabling module: '{module.name}'. Module was enabled at runtime.")
-                module.enabled = True
+                elif module_control[0].startswith("enable"):
+                    if not module.enabled:
+                        if module.default_disabled == module_control[1]:
+                            self.logger.info(f"Enabling module: '{module.name}'. Module was enabled at runtime.")
+                        module.enabled = True
 
             # Don't initialize the module if it is disabled
             if not module.enabled:
@@ -177,7 +205,7 @@ class App:
                     continue
                 if module.enabled and module.default_disabled:
                     module.enabled = False
-                modules[name] = module
+                modules[module.name] = module
 
             except Exception as e:
                 self.init_logs.append(("error", f"Failed to load {import_path}: {e}"))

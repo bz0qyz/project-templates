@@ -2,7 +2,6 @@
 requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
-
 [project]
 name = "container-modules"
 version = "2026.4.0"
@@ -14,7 +13,6 @@ maintainers = []
 
 requires-python = ">=3.12"
 readme = {file = "README.md", content-type = "text/markdown"}
-
 keywords = ["python", "templates", "automation", "bootstrap"]
 
 dependencies = [
@@ -26,26 +24,20 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pyinstaller>=6.18.0",
+    "pyinstaller>=6.19.0",
 ]
 
 [project.urls]
 home = "https://www.64byte.com"
 project = "https://github.com/bz0qyz/project-templates"
 
-
-#[tool.pyinstaller.build]
-#onefile = true
-#console = true
-#entrypoint = "src/__main__.py"
-## Log level: CRITICAL, ERROR, WARNING, INFO, DEBUG, TRACE
-#log-level = "INFO"
-#datas = [
-#    ["README.md", "."],
-#]
-
 [project.scripts]
 container-runtime = "runtime.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pyinstaller.build]
+datas = [
+    ["src/runtime/modules", "runtime/modules"]
+]
