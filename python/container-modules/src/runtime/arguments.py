@@ -13,6 +13,14 @@ class Arguments:
                             help="Show application modules and exit.",
                             action="store_true", dest="show_modules"
                             )
+        parser.add_argument('--module',
+                            metavar='module-name', type=str, default=None, dest='show_module_info',
+                            help='Show the details for a specific module name',
+                            )
+        parser.add_argument('--table-format',
+                            metavar='rounded_grid', type=str, default="rounded_grid", dest='table_format',
+                            help='Set the tabulate format for modules help. See https://pypi.org/project/tabulate for options. Default: rounded_grid.',
+                            )
         parser.add_argument('-cf', '--config-file',
                             metavar='/path/to/config.json', type=str, default=None,
                             help='Use a configuration file for argument values. Values override args and ENV vars. ENV: CONFIG_FILE',
@@ -24,7 +32,7 @@ class Arguments:
                             action=EnvDefault, envvar="ASYNC_ENABLED"
                             )
         parser.add_argument('--async-workers',
-                            metavar='4', type=int, default=4, dest="async_workers",
+                            metavar='8', type=int, default=8, dest="async_workers",
                             help=f'Set the number of workers. Only valid if --async is True. ENV: ASYNC_WORKERS',
                             action=EnvDefault, envvar="ASYNC_WORKERS"
                             )

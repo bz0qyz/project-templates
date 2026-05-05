@@ -24,8 +24,18 @@ class AppModuleBase:
 
         def add_to_parser(self, parser: argparse.ArgumentParser|argparse._ArgumentGroup):
             """Register this argument on the given parser."""
+            # append the default to the help
+            if self.envvar and not 'Default:' in self.envvar:
+                self.help = f"{self.help} Default: {self.default}."
+            # append the envvar to the help
             if self.envvar and not 'ENV:' in self.envvar:
-                self.help = f"{self.help} ENV: {self.envvar}"
+                self.help = f"{self.help} ENV: {self.envvar}."
+            # set dest from the first long flag if not explicitly set
+            if not self.dest:
+                for flag in self.flags:
+                    if flag.startswith("--"):
+                        self.dest = flag[2:].replace("-", "_")
+                        break
             kwargs = {k: v for k, v in {
                 "help": self.help,
                 "default": self.default,
@@ -107,7 +117,7 @@ class AppModuleBase:
     def add_argument(self, *args, **kwargs) -> None:
         self.arguments.append(self.Argument(*args, **kwargs))
 
-    def init(self, **kwargs: dict) -> bool:
+    def init(self, post_init: bool = True, **kwargs: dict) -> bool:
         """
         Initialize the module with optional keyword arguments.
         This can be used to pass in shared resources like database connections, clients, etc.
@@ -117,8 +127,9 @@ class AppModuleBase:
                 setattr(self, key, value)
 
         # Run post init hooks
-        for fn in self._post_init_hooks:
-            fn()
+        if post_init:
+            for fn in self._post_init_hooks:
+                fn()
 
         return self.enabled
 

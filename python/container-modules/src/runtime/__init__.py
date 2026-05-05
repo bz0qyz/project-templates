@@ -7,7 +7,7 @@ import importlib
 from importlib import metadata
 from packaging.version import Version
 from types import NoneType
-from tabulate import tabulate
+from .modules_tabulate import ModulesTabulate
 from .arguments import Arguments
 from ._shared import (AppLogger, LOG_LEVELS)
 
@@ -91,6 +91,9 @@ class App:
         # Initialize the modules
         self.init_modules()
 
+        # Create a modules tabulate object for helpful display of modules in the app
+        self.modules_tabulate = ModulesTabulate(modules=self.modules, table_format=self.args.table_format)
+
         # Show any logs that happened during init and before the logger was configured
         for log in self.init_logs:
             getattr(self.logger, log[0])(log[1])
@@ -108,16 +111,19 @@ class App:
                 ct += 1
         return ct
 
-    def show_modules(self):
+    def show_modules(self) -> None:
         """ Show modules in a table """
         print(f"{self}") # Prints app name and version (__str__)
         print("Modules:")
-        tab_modules = []
-        for name, module in self.modules.items():
-            tab_modules.append(
-                [module.name, module.version, module.description, module.enabled, module.default_disabled])
-        print(tabulate(tab_modules, headers=["Module Name", "Version", "Description", "Enabled", "Default Disabled"],
-                       tablefmt="rounded_outline"))
+        print(self.modules_tabulate.show_module_summary())
+
+    def show_module_info(self, module_name: str) -> None:
+        """ Show module information in a table """
+        print("Module Information:")
+        print(self.modules_tabulate.show_module_summary(module_name=module_name))
+        print("Module Arguments:")
+        print(self.modules_tabulate.show_module_args(module_name=module_name))
+        return None
 
     def init_modules(self):
         """ Initialize the modules with app arguments """
@@ -149,7 +155,7 @@ class App:
             if not hasattr(module, 'init'):
                 continue
             try:
-                initialized = module.init(**{})
+                initialized = module.init(post_init=False, **{})
                 if not initialized:
                     self.logger.warning(f"Module '{name}' failed to initialize and will be disabled.")
                     module.enabled = False

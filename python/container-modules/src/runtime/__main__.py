@@ -68,17 +68,26 @@ def process_results(results: dict) -> None:
 
 def main():
     signal.signal(signal.SIGINT, signal_handler)
+    # from pprint import pprint
+    # pprint(app.args)
+    # sys.exit(0)
 
-    # Show the application version
+    # Show the application version and exit
     if app.args.show_version:
         print(f"{app}")
+        sys.exit(0)
+    # Show the modules and exit
+    if app.args.show_modules:
+        app.show_modules()
+        sys.exit(0)
+    # Show a module and exit
+    if app.args.show_module_info:
+        app.show_module_info(app.args.show_module_info)
         sys.exit(0)
 
     init_modules(app=app)
 
-    if app.args.show_modules:
-        app.show_modules()
-        sys.exit(0)
+
 
     app.logger.info(f"Starting {app}")
     if app.args.async_enabled:

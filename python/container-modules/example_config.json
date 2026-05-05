@@ -2,10 +2,10 @@
   "one_shot": true,
   "async": true,
   "async_workers": 6,
-  "log_level": "debug",
+  "log_level": "info",
   "log_format": "text",
-  "dev_log": true,
+  "dev_log": false,
   "test_1_foo": "not bar",
-  "disable_module_test_1": true,
+  "disable_module_test_1": false,
   "enable_module_test_2": false
 }
