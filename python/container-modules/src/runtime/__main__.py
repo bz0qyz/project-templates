@@ -87,8 +87,6 @@ def main():
 
     init_modules(app=app)
 
-
-
     app.logger.info(f"Starting {app}")
     if app.args.async_enabled:
         app.logger.info(f"Running modules asynchronously with {app.args.async_workers} workers and {app.args.async_worker_timeout}s timeout")

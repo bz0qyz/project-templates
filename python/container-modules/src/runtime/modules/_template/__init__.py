@@ -1,6 +1,10 @@
 import argparse
 from .._base import AppModuleBase
 from runtime._shared import EnvDefault
+# IMPORTANT: modules are not loaded by pyinstaller, therefore
+#            any base (not pypi) modules used in modules that are not used in the base app, must be imported
+#            in runtime._shared to be included in the package
+
 
 # Initialize the module sub-class from AppModule
 class AppModule(AppModuleBase):
